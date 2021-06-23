@@ -92,21 +92,21 @@ const Dashboard = (props) => {
     }
   }
 
-  if (transferState && !transferState.value) { // affiche comme quoi c'est transfer deactivated
+  if (transferState && !transferState.value && !isContractOwner) {
     return (
       <span>
         <div className="mb-2"><strong>current account:</strong> {userAccount}</div>
         <div className="mb-5"><strong>account balance:</strong> {userBalance}</div>
         <div>Currently <strong>transfer is deactivated</strong></div>
-        {
+        {/* {
           isContractOwner ?
             <div>
               <div className="d-flex flex-row justify-content-center align-items-center">
                 <div className="btn btn-success my-5" onClick={() => triggerTransferState()}>Enable transfer</div>
               </div>
             </div> :
-            <div className="text-muted"><strong>Only Contract Owner can enable / disable transfer</strong></div>
-        }
+        } */}
+        <div className="text-muted"><strong>Only Contract Owner can enable / disable transfer</strong></div>
       </span>
     )
   }
@@ -142,7 +142,15 @@ const Dashboard = (props) => {
               <input type="submit" className="btn btn-primary"></input>
             </div>
           </form>
-        {isContractOwner ? <div className="btn btn-danger my-5" onClick={() => triggerTransferState()}>Disable transfer</div> : null }
+        {
+          (isContractOwner && transferState?.value)?
+              <div className="btn btn-danger my-5" onClick={() => triggerTransferState()}>Disable transfer</div> : 
+            null 
+        }
+        {
+          (isContractOwner && !transferState?.value) ?
+            <div className="btn btn-success my-5" onClick={() => triggerTransferState()}>Enable transfer</div>:null
+        }
       </div>
     </span>
   )
