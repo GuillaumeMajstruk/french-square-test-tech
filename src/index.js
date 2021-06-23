@@ -8,10 +8,14 @@ import reportWebVitals from './reportWebVitals';
 // import drizzle functions and contract artifact
 import { Drizzle } from "@drizzle/store";
 import FSToken from "./contracts/FST.json";
+import store from './middleware';
 
 // let drizzle know what contracts we want and how to access our test blockchain
 const options = {
   contracts: [FSToken],
+  events: {
+    FST: ["Transfer", "TransferState"]
+  },
   web3: {
     fallback: {
       type: "ws",
@@ -21,7 +25,7 @@ const options = {
 };
 
 // setup drizzle
-const drizzle = new Drizzle(options);
+const drizzle = new Drizzle(options, store);
 
 ReactDOM.render(
   <React.StrictMode>
