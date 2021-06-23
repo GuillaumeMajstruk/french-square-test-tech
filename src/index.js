@@ -1,12 +1,31 @@
+import 'bootstrap/dist/css/bootstrap.css';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+// import drizzle functions and contract artifact
+import { Drizzle } from "@drizzle/store";
+import FSToken from "./contracts/FST.json";
+
+// let drizzle know what contracts we want and how to access our test blockchain
+const options = {
+  contracts: [FSToken],
+  web3: {
+    fallback: {
+      type: "ws",
+      url: "ws://127.0.0.1:9545",
+    },
+  },
+};
+
+// setup drizzle
+const drizzle = new Drizzle(options);
+
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+      <App drizzle={drizzle}/>
   </React.StrictMode>,
   document.getElementById('root')
 );
