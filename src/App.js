@@ -17,6 +17,7 @@ const Dashboard = (props) => {
   const { register, formState: { errors }, handleSubmit } = useForm();
 
   useEffect(() => {
+    setLoading(true);
     const checkContractOwner = () => {
       if (contract) {
         const dataKey = contract.methods["owner"].cacheCall();
@@ -46,6 +47,9 @@ const Dashboard = (props) => {
     const dataKey = contract.methods["getTransferState"].cacheCall();
     if (dataKey && FST.getTransferState[dataKey]) {
       setTransferState(FST.getTransferState[dataKey]);
+    }
+    return () => {
+      setLoading(false);
     }
   }, [props.drizzleState.accounts, props.drizzleState.accountBalances, contract, FST.getTransferState, FST.owner, FST.balanceOf, userAccount]);
 
@@ -86,6 +90,7 @@ const Dashboard = (props) => {
         setLoading(true);
         const resStackId = await contract.methods["transfer"].cacheSend(addrInput, amountInput, {from: userAccount});
         setStackId(resStackId);
+        resetFields();
       // }
     } catch (error) {
       console.log(error);
