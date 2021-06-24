@@ -64,10 +64,11 @@ const Dashboard = (props) => {
       toast.success(msg, toastOptions);
       setTransactionLoading(false);
     } catch (error) {
-      const jsonData = JSON.parse(error.message.match(/\{.+\}/ig)[0]);
-      const { message } = jsonData.value.data;
-      const { name } = jsonData.value.data.data;
-      toast.error(`${name} - ${message}`, toastOptions);
+      // const jsonData = JSON.parse(error.message.match(/\{.+\}/ig)[0]);
+      // const { message } = jsonData.value.data;
+      // const { name } = jsonData.value.data.data;
+      // toast.error(`${name} - ${message}`, toastOptions);
+      toast.error(error.message, toastOptions);
       setTransactionLoading(false);
     }
   }
@@ -93,21 +94,59 @@ const Dashboard = (props) => {
   );
 
 
-  if (transferState && !transferState.value && !isContractOwner) {
+  if (!isContractOwner && transferState) {
     return (
       <span>
-        <div className="mb-2"><strong>current account:</strong> {drizzleState.accounts[0]}</div>
+        <div className="my-5"><strong>current account:</strong> {drizzleState.accounts[0]}</div>
         <div className="mb-5"><strong>account balance:</strong> {userBalance && userBalance.value}</div>
-        <div>Currently <strong>transfer is deactivated</strong></div>
-        <div className="text-muted"><strong>Only Contract Owner can enable / disable transfer</strong></div>
+        {
+          transferState.value ?
+          <div>
+            <form onSubmit={handleSubmit(transfer)}>
+              <div className="row justify-content-center my-5">
+                <input 
+                  type="text" 
+                  placeholder="Enter account address" 
+                  value={addrInput} 
+                  onInput={e => setAddrInput(e.target.value)}
+                  {...register("address", { required: true, validate: isEthAddr })}
+                ></input>
+                <div className="text-danger mb-3">
+                  {errors.address?.type === 'required' && "address is required"}
+                  {errors.address?.type === 'validate' && "address is incorect"}
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="Enter amount to send" 
+                  value={amountInput} 
+                  onInput={e => setAmountInput(e.target.value.toLowerCase())}
+                  {...register("amount", { required: true, validate: isNan })}
+                ></input>
+                <div className="text-danger mb-3">
+                  {errors.amount?.type === 'required' && "Amount name is required"}
+                  {errors.amount?.type === 'validate' && "Amount must be a number"}
+                </div>
+                {
+                  transactionLoading ?
+                    <div className="spinner-border text-primary text-center" role="status"></div> :
+                    <input type="submit" className="btn btn-primary" value="Send"></input>
+                }
+              </div>
+            </form>
+          </div> :
+          <div>
+            <div>Currently <strong>transfer is deactivated</strong></div>
+            <div className="text-muted"><strong>Only Contract Owner can enable / disable transfer</strong></div>
+          </div>
+        }
       </span>
     )
-  }
-  return (
-    <span>
-      <div className="my-5"><strong>current account:</strong> {drizzleState.accounts[0]}</div>
-      <div className="mb-5"><strong>account balance:</strong> {userBalance && userBalance.value}</div>
-      <div>
+  } else if (isContractOwner && transferState) {
+    return (
+      <span>
+        <div className="my-5"><strong>current account:</strong> {drizzleState.accounts[0]}</div>
+        <div className="mb-5"><strong>account balance:</strong> {userBalance && userBalance.value}</div>
+        <div>
           <form onSubmit={handleSubmit(transfer)}>
             <div className="row justify-content-center my-5">
               <input 
@@ -139,18 +178,16 @@ const Dashboard = (props) => {
               }
             </div>
           </form>
-        {
-          (isContractOwner && transferState?.value)?
-              <div className={`btn btn-danger my-5 ${transactionLoading ? "disabled": null}`} onClick={() => triggerTransferState()}>Disable transfer</div> : 
-            null 
-        }
-        {
-          (isContractOwner && !transferState?.value) ?
-            <div className={`btn btn-success my-5 ${transactionLoading ? "disabled": null}`} onClick={() => triggerTransferState()}>Enable transfer</div>:null
-        }
-      </div>
-    </span>
-  )
+          {
+            transferState.value ?
+                <div className={`btn btn-danger my-5 ${transactionLoading ? "disabled": null}`} onClick={() => triggerTransferState()}>Disable transfer</div> : 
+                <div className={`btn btn-success my-5 ${transactionLoading ? "disabled": null}`} onClick={() => triggerTransferState()}>Enable transfer</div> 
+          }
+        </div>
+      </span>
+    )
+  }
+  return null;
 };
 
 const App = (props) => {
@@ -180,7 +217,7 @@ const App = (props) => {
               drizzleContext => {
                 const {drizzle, drizzleState, initialized} = drizzleContext;
                 if (!initialized) {
-                  return "app is loading";
+                  return "Loading...";
                 }
 
                 return <Dashboard drizzle={drizzle} drizzleState={drizzleState}/>
