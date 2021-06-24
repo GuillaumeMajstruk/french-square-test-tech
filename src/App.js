@@ -1,18 +1,76 @@
 import React, {useState, useEffect} from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useForm } from 'react-hook-form';
 import { DrizzleContext } from '@drizzle/react-plugin';
 import './App.css';
+
+const toastOptions = {
+  position: toast.POSITION.TOP_RIGHT
+};
 
 const Dashboard = (props) => {
   const [userBalance, setUserBalance] = useState(null);
   const [isContractOwner, setContractOwner] = useState(null);
   const [transferState, setTransferState] = useState(null);
+  const [transactionLoading, setTransactionLoading] = useState(false);
 
+  const { register, formState: { errors }, handleSubmit } = useForm();
   const [addrInput, setAddrInput] = useState("");
   const [amountInput, setAmountInput] = useState("");
   
   const {drizzle, drizzleState} = props;
   const { FST } = drizzleState.contracts;
+
+  const triggerTransferState = async () => {
+    try {
+      setTransactionLoading(true);
+      transferState.value = !transferState.value;
+      const contract = drizzle.contracts.FST;
+      const res = await contract.methods.setTransferState(transferState.value).send({
+        from: drizzleState.accounts[0]
+      });
+      const { newState } = res.events.TransferState.returnValues;
+      const msg = newState ? "Transfer has been successfully enabled.": "Transfer has been successfully disabled.";
+      toast.success(msg, toastOptions);
+      setTransactionLoading(false);
+    } catch (error) {
+      toast.error(error.message, toastOptions);
+      setTransactionLoading(false);
+    }
+  }
+
+  const resetFields = () => {
+    setAddrInput("");
+    setAmountInput("");
+  };
+
+  const isEthAddr = (addr) => {
+    return drizzle.web3.utils.isAddress(addr);
+  }
+
+  const isNan = (val) => {
+    return !isNaN(val);
+  }
+
+  const transfer = async () => {
+    try {
+      setTransactionLoading(true);
+      const contract = drizzle.contracts.FST;
+      const res = await contract.methods.transfer(addrInput, amountInput).send({from: drizzleState.accounts[0]});
+      const {_to, _value} = res.events.Transfer.returnValues;
+      const msg = `successfully transfered ${_value} FST to 0x...${_to.slice(_to.length - 4, _to.length)} from your account.`
+      resetFields();
+      toast.success(msg, toastOptions);
+      setTransactionLoading(false);
+    } catch (error) {
+      const jsonData = JSON.parse(error.message.match(/\{.+\}/ig)[0]);
+      const { message } = jsonData.value.data;
+      const { name } = jsonData.value.data.data;
+      toast.error(`${name} - ${message}`, toastOptions);
+      setTransactionLoading(false);
+    }
+  }
 
   useEffect(
     () => {
@@ -33,58 +91,7 @@ const Dashboard = (props) => {
       }
     }, [drizzle.contracts.FST, drizzleState.accounts, FST.balanceOf, FST.owner, FST.getTransferState]
   );
-  const { register, formState: { errors }, handleSubmit } = useForm();
 
-  const triggerTransferState = () => {
-    transferState.value = !transferState.value;
-    const contract = drizzle.contracts.FST;
-    contract.methods["setTransferState"].cacheSend(transferState.value, {
-      from: drizzleState.accounts[0]
-    });
-  }
-
-  const resetFields = () => {
-    setAddrInput("");
-    setAmountInput("");
-  };
-
-  const isEthAddr = (addr) => {
-    return drizzle.web3.utils.isAddress(addr);
-  }
-
-  const isNan = (val) => {
-    return !isNaN(val);
-  }
-
-  // const isContractOwner = () => {
-  //   if (contractOwner) {
-  //     console.log(contractOwner, drizzleState.accounts[0]);
-  //     return contractOwner.value === drizzleState.accounts[0]
-  //   }
-  //   return false;
-  // }
-
-  const transfer = () => {
-    try {
-      // if (!addrInput.length || !amountInput) {
-      //   alert("Error, you need to fill address and amout !");
-      //   resetFields();
-      // }
-      // else if (!props.drizzle.web3.utils.isAddress(addrInput)) {
-      //   alert("The address you fill is not an ethereum address !");
-      //   resetFields();
-      // }
-      // else {
-        // setLoading(true);
-        const contract = drizzle.contracts.FST;
-        contract.methods["transfer"].cacheSend(addrInput, amountInput, {from: drizzleState.accounts[0]});
-        // setStackId(resStackId);
-        resetFields();
-      // }
-    } catch (error) {
-      console.log(error);
-    }
-  }
 
   if (transferState && !transferState.value && !isContractOwner) {
     return (
@@ -102,7 +109,7 @@ const Dashboard = (props) => {
       <div className="mb-5"><strong>account balance:</strong> {userBalance && userBalance.value}</div>
       <div>
           <form onSubmit={handleSubmit(transfer)}>
-            <div className="row my-5">
+            <div className="row justify-content-center my-5">
               <input 
                 type="text" 
                 placeholder="Enter account address" 
@@ -125,17 +132,21 @@ const Dashboard = (props) => {
                 {errors.amount?.type === 'required' && "Amount name is required"}
                 {errors.amount?.type === 'validate' && "Amount must be a number"}
               </div>
-              <input type="submit" className="btn btn-primary"></input>
+              {
+                transactionLoading ?
+                  <div className="spinner-border text-primary text-center" role="status"></div> :
+                  <input type="submit" className="btn btn-primary" value="Send"></input>
+              }
             </div>
           </form>
         {
           (isContractOwner && transferState?.value)?
-              <div className="btn btn-danger my-5" onClick={() => triggerTransferState()}>Disable transfer</div> : 
+              <div className={`btn btn-danger my-5 ${transactionLoading ? "disabled": null}`} onClick={() => triggerTransferState()}>Disable transfer</div> : 
             null 
         }
         {
           (isContractOwner && !transferState?.value) ?
-            <div className="btn btn-success my-5" onClick={() => triggerTransferState()}>Enable transfer</div>:null
+            <div className={`btn btn-success my-5 ${transactionLoading ? "disabled": null}`} onClick={() => triggerTransferState()}>Enable transfer</div>:null
         }
       </div>
     </span>
@@ -145,27 +156,23 @@ const Dashboard = (props) => {
 const App = (props) => {
   const {drizzle} = props;
 
-  const reloadToUpdateAccount = () => {
+  const reloadOnAccountChanged = () => {
     window.location.reload();
   }
 
-  window.ethereum.on('accountsChanged', reloadToUpdateAccount);
-
   useEffect(
     () => {
-      const unsub = () => {
-        console.log('unsub');
-        window.ethereum.off('accountsChanged', reloadToUpdateAccount);
-      };
+      window.ethereum.on('accountsChanged', reloadOnAccountChanged);
 
       return () => {
-        unsub();
+        window.ethereum.off('accountsChanged', reloadOnAccountChanged);
       }
     }
   )
 
   return (
     <div className="App">
+      <ToastContainer />
       <header className="App-header">
         <DrizzleContext.Provider drizzle={drizzle}>
           <DrizzleContext.Consumer>

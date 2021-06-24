@@ -8,14 +8,17 @@ import reportWebVitals from './reportWebVitals';
 // import drizzle functions and contract artifact
 import { Drizzle } from "@drizzle/store";
 import FSToken from "./contracts/FST.json";
-import store from './middleware';
+// import store from './middleware';
 
-// let drizzle know what contracts we want and how to access our test blockchain
+//polls account -> memory leak, fixed using subscribe to accountsChanged event in App functionnal component.
 const options = {
   contracts: [FSToken],
   events: {
     FST: ["Transfer", "TransferState"]
   },
+  // polls: {
+  //   accounts: 3000
+  // },
   web3: {
     fallback: {
       type: "ws",
@@ -25,7 +28,7 @@ const options = {
 };
 
 // setup drizzle
-const drizzle = new Drizzle(options, store);
+const drizzle = new Drizzle(options);
 
 ReactDOM.render(
   <React.StrictMode>
